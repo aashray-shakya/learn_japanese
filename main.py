@@ -57,6 +57,7 @@ class QuizApp(tk.Tk):
         self.correct_answer = ""
         self.score = 0
         self.total = 0
+        self.remaining = []
 
         self._build_mode_screen()
 
@@ -95,6 +96,8 @@ class QuizApp(tk.Tk):
         self.quiz_data = data
         self.score = 0
         self.total = 0
+        self.remaining = list(data.keys())
+        random.shuffle(self.remaining)
         self.mode_frame.destroy()
         self._build_quiz_screen()
         self.next_question()
@@ -149,7 +152,10 @@ class QuizApp(tk.Tk):
         ).pack(pady=10)
 
     def next_question(self):
-        self.current_char = random.choice(list(self.quiz_data.keys()))
+        if not self.remaining:
+            self.show_completed_screen()
+            return
+        self.current_char = random.choice(self.remaining)
         self.correct_answer = self.quiz_data[self.current_char]
         self.char_label.config(text=self.current_char)
         self.answer_var.set("")
@@ -162,6 +168,7 @@ class QuizApp(tk.Tk):
         self.total += 1
         if guess == self.correct_answer:
             self.score += 1
+            self.remaining.remove(self.current_char)
             self.feedback_label.config(text="Correct! Excellent job.", fg=CORRECT)
         else:
             self.feedback_label.config(
@@ -169,6 +176,41 @@ class QuizApp(tk.Tk):
             )
         self.score_label.config(text=f"Score: {self.score} / {self.total}")
         self.after(900, self.next_question)
+
+    # ---------- Screen 3: completed ----------
+    def show_completed_screen(self):
+        self.quiz_frame.destroy()
+        self.done_frame = tk.Frame(self, bg=BG)
+        self.done_frame.pack(expand=True, fill="both")
+
+        tk.Label(
+            self.done_frame, text="All done!", font=("Helvetica", 22, "bold"),
+            bg=BG, fg=FG
+        ).pack(pady=(90, 10))
+
+        tk.Label(
+            self.done_frame, text=f"You cleared every character.\nFinal score: {self.score} / {self.total}",
+            font=self.label_font, bg=BG, fg=MUTED, justify="center"
+        ).pack(pady=(0, 30))
+
+        tk.Button(
+            self.done_frame, text="Play Again", font=self.label_font,
+            bg=ACCENT, fg="white", activebackground="#1d4ed8", activeforeground="white",
+            relief="flat", width=18, height=2, cursor="hand2",
+            command=self.restart
+        ).pack(pady=6)
+
+        tk.Button(
+            self.done_frame, text="Quit", font=self.label_font,
+            bg="white", fg=MUTED, activebackground="#f0f0f0",
+            relief="flat", width=18, height=2, cursor="hand2",
+            highlightbackground=BORDER, highlightthickness=1,
+            command=self.destroy
+        ).pack(pady=6)
+
+    def restart(self):
+        self.done_frame.destroy()
+        self._build_mode_screen()
 
 
 if __name__ == "__main__":
