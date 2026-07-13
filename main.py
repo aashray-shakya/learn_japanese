@@ -1,4 +1,6 @@
 import random
+import tkinter as tk
+from tkinter import font as tkfont
 
 HIRAGANA_DATA = {
     # Vowels
@@ -6,11 +8,11 @@ HIRAGANA_DATA = {
     # K-Row
     "か": "ka", "き": "ki", "く": "ku", "け": "ke", "こ": "ko",
     # S-Row
-    "さ": "sa", "し": "shi", "す": "su", "ぜ": "se", "そ": "so",
+    "さ": "sa", "し": "shi", "す": "su", "せ": "se", "そ": "so",
     # T-Row
     "た": "ta", "ち": "chi", "つ": "tsu", "て": "te", "と": "to",
     # N-Row
-    "な": "na", "に": "ni", "ぬ": "nu", "ね": "ne", "の": "no"
+    "な": "na", "に": "ni", "ぬ": "nu", "ね": "ne", "の": "no",
 }
 
 KATAKANA_DATA = {
@@ -23,45 +25,152 @@ KATAKANA_DATA = {
     # T-Row
     "タ": "ta", "チ": "chi", "ツ": "tsu", "テ": "te", "ト": "to",
     # N-Row
-    "ナ": "na", "ニ": "ni", "ヌ": "nu", "ネ": "ne", "ノ": "no"
+    "ナ": "na", "ニ": "ni", "ヌ": "nu", "ネ": "ne", "ノ": "no",
 }
 
-def run_quiz():
-    print("Welcome to your Japanese Learning MVP!")
-    
-    # 1. Ask the user for their preferred mode
-    print("Choose what you want to practice:")
-    print("1. Hiragana")
-    print("2. Katakana")
-    choice = input("Enter 1 or 2: ").strip()
-    
-    # 2. Select the data dictionary dynamically based on choice
-    if choice == "2":
-        quiz_data = KATAKANA_DATA
-        print("\nStarting Katakana Quiz!")
-    else:
-        quiz_data = HIRAGANA_DATA
-        print("\nStarting Hiragana Quiz!")
-        
-    print("Type the correct English sound for the character. Type 'q' to quit.\n")
+# ---- Minimal color palette ----
+BG = "#fafafa"
+FG = "#1a1a1a"
+MUTED = "#8a8a8a"
+ACCENT = "#2563eb"
+CORRECT = "#16a34a"
+WRONG = "#dc2626"
+ENTRY_BG = "#ffffff"
+BORDER = "#e0e0e0"
 
-    # 3. Use quiz_data to get the characters
-    characters = list(quiz_data.keys())
 
-    while True:
-        # Pick a random character from our selected list
-        char = random.choice(characters)
-        correct_answer = quiz_data[char]
+class QuizApp(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title("Japanese Quiz")
+        self.geometry("420x480")
+        self.configure(bg=BG)
+        self.resizable(False, False)
 
-        user_guess = input(f"What is the sound for '{char}'? ").strip().lower()
+        self.char_font = tkfont.Font(family="Helvetica", size=64)
+        self.label_font = tkfont.Font(family="Helvetica", size=13)
+        self.feedback_font = tkfont.Font(family="Helvetica", size=12)
+        self.score_font = tkfont.Font(family="Helvetica", size=11)
 
-        if user_guess == 'q':
-            print("\nJa mata ne! (See you later!) Thanks for practicing.")
-            break
-        elif user_guess == correct_answer:
-            print("Correct! Excellent job.\n")
+        self.quiz_data = HIRAGANA_DATA
+        self.current_char = ""
+        self.correct_answer = ""
+        self.score = 0
+        self.total = 0
+
+        self._build_mode_screen()
+
+    # ---------- Screen 1: choose mode ----------
+    def _build_mode_screen(self):
+        self.mode_frame = tk.Frame(self, bg=BG)
+        self.mode_frame.pack(expand=True, fill="both")
+
+        tk.Label(
+            self.mode_frame, text="Japanese Quiz", font=("Helvetica", 22, "bold"),
+            bg=BG, fg=FG
+        ).pack(pady=(80, 10))
+
+        tk.Label(
+            self.mode_frame, text="Choose what you'd like to practice",
+            font=self.label_font, bg=BG, fg=MUTED
+        ).pack(pady=(0, 30))
+
+        tk.Button(
+            self.mode_frame, text="Hiragana", font=self.label_font,
+            bg=ACCENT, fg="white", activebackground="#1d4ed8", activeforeground="white",
+            relief="flat", width=18, height=2, cursor="hand2",
+            command=lambda: self.start_quiz(HIRAGANA_DATA)
+        ).pack(pady=6)
+
+        tk.Button(
+            self.mode_frame, text="Katakana", font=self.label_font,
+            bg="white", fg=ACCENT, activebackground="#f0f0f0",
+            relief="flat", width=18, height=2, cursor="hand2",
+            highlightbackground=BORDER, highlightthickness=1,
+            command=lambda: self.start_quiz(KATAKANA_DATA)
+        ).pack(pady=6)
+
+    # ---------- Screen 2: quiz ----------
+    def start_quiz(self, data):
+        self.quiz_data = data
+        self.score = 0
+        self.total = 0
+        self.mode_frame.destroy()
+        self._build_quiz_screen()
+        self.next_question()
+
+    def _build_quiz_screen(self):
+        self.quiz_frame = tk.Frame(self, bg=BG)
+        self.quiz_frame.pack(expand=True, fill="both")
+
+        top_bar = tk.Frame(self.quiz_frame, bg=BG)
+        top_bar.pack(fill="x", padx=20, pady=(20, 0))
+
+        self.score_label = tk.Label(
+            top_bar, text="Score: 0 / 0", font=self.score_font, bg=BG, fg=MUTED
+        )
+        self.score_label.pack(side="left")
+
+        tk.Button(
+            top_bar, text="Quit", font=self.score_font, bg=BG, fg=MUTED,
+            relief="flat", cursor="hand2", command=self.destroy
+        ).pack(side="right")
+
+        self.char_label = tk.Label(
+            self.quiz_frame, text="", font=self.char_font, bg=BG, fg=FG
+        )
+        self.char_label.pack(pady=(50, 10))
+
+        tk.Label(
+            self.quiz_frame, text="What's the sound?", font=self.label_font,
+            bg=BG, fg=MUTED
+        ).pack(pady=(0, 20))
+
+        self.answer_var = tk.StringVar()
+        self.entry = tk.Entry(
+            self.quiz_frame, textvariable=self.answer_var, font=("Helvetica", 16),
+            justify="center", bg=ENTRY_BG, fg=FG, relief="flat",
+            highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT
+        )
+        self.entry.pack(ipady=8, padx=60, fill="x")
+        self.entry.bind("<Return>", self.check_answer)
+        self.entry.focus_set()
+
+        self.feedback_label = tk.Label(
+            self.quiz_frame, text="", font=self.feedback_font, bg=BG, fg=MUTED
+        )
+        self.feedback_label.pack(pady=20)
+
+        tk.Button(
+            self.quiz_frame, text="Submit", font=self.label_font,
+            bg=ACCENT, fg="white", activebackground="#1d4ed8", activeforeground="white",
+            relief="flat", width=16, height=1, cursor="hand2",
+            command=self.check_answer
+        ).pack(pady=10)
+
+    def next_question(self):
+        self.current_char = random.choice(list(self.quiz_data.keys()))
+        self.correct_answer = self.quiz_data[self.current_char]
+        self.char_label.config(text=self.current_char)
+        self.answer_var.set("")
+        self.entry.focus_set()
+
+    def check_answer(self, event=None):
+        guess = self.answer_var.get().strip().lower()
+        if not guess:
+            return
+        self.total += 1
+        if guess == self.correct_answer:
+            self.score += 1
+            self.feedback_label.config(text="Correct! Excellent job.", fg=CORRECT)
         else:
-            print(f"Oops! The correct sound was '{correct_answer}'.\n")
+            self.feedback_label.config(
+                text=f"Oops! The correct sound was '{self.correct_answer}'.", fg=WRONG
+            )
+        self.score_label.config(text=f"Score: {self.score} / {self.total}")
+        self.after(900, self.next_question)
+
 
 if __name__ == "__main__":
-    run_quiz()
+    app = QuizApp()
+    app.mainloop()
